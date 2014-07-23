@@ -1,0 +1,5 @@
+The core part of ALU is the integer arithmetic, if the arithmetic 
+unit (AU) is always the behavior model, the cpu always cannot be useful.
+So we need to generate the synthesizable AU. 
+Power, area, speed is the depenedent variables. Speed factor > power factor
+>area factor. 
