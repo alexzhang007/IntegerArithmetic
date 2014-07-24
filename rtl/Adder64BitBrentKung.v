@@ -24,7 +24,7 @@ wire [N-1:0] oZ;
 wire         oReady;
 wire         oCarryOut;
 //Input DFF
-wire [N-1:0] p,g,wX,wY;
+wire [N-1:0] p0,g0,wX,wY;
 FFD_POSEDGE_ASYNC_RESET #(.SIZE(N)) FFD_X ( 
   .clk(clk),
   .resetn(resetn), 
@@ -53,9 +53,24 @@ FFD_POSEDGE_ASYNC_RESET #(.SIZE(1)) FFD_CarryInDelay1 (
 );
 genvar i;         
 generate for (i=0; i<N; i++) begin :pg_cla
-    assign p[i] = wX[i]^wY[i];
-    assign g[i] = wX[i]&wY[i];
+    assign p0[i] = wX[i]^wY[i];
+    assign g0[i] = wX[i]&wY[i];
 end endgenerate 
+//Insert the D-FlipFlop to fix the slack time=-0.07
+wire [N-1:0] p,g;
+FFD_POSEDGE_ASYNC_RESET #(.SIZE(N)) FFD_P0 (
+  .clk(clk),
+  .resetn(resetn),
+  .D(p0),
+  .Q(p)
+);
+
+FFD_POSEDGE_ASYNC_RESET #(.SIZE(N)) FFD_G0 (
+  .clk(clk),
+  .resetn(resetn),
+  .D(g0),
+  .Q(g)
+);
 //Stage 1
 wire [N-1:0] p1, g1;
 GP_Buf   gp1Buf0   (.iBufG( g[0]), .oBufG(g1[0]), .iBufP(p[0]), .oBufP(p1[0]));
@@ -954,10 +969,25 @@ GP_Buf   gp11Buf61   (.iBufG( g10_pp[61]), .oBufG( g11[61]), .iBufP(p10_pp[61]),
 GP_Adder gp11Adder62 (.iGi_j1(g10_pp[62]), .iPi_j1(p10_pp[62]), .iGj_k(g10_pp[61]), .iPj_k(p10_pp[61]), .oGi_k(g11[62]), .oPi_k(p11[62]));
 GP_Buf   gp11Buf63   (.iBufG( g10_pp[63]), .oBufG( g11[63]), .iBufP(p10_pp[63]), .oBufP(p11[63]));
 //Output the sum
+wire wValidPP6;
+FFD_POSEDGE_ASYNC_RESET #(.SIZE(1)) FFD_Delay6 (
+  .clk(clk), 
+  .resetn(resetn), 
+  .D(wValidPP5), 
+  .Q(wValidPP6) 
+);
+wire wValidPP7;
+FFD_POSEDGE_ASYNC_RESET #(.SIZE(1)) FFD_Delay7 (
+  .clk(clk), 
+  .resetn(resetn), 
+  .D(wValidPP6), 
+  .Q(wValidPP7) 
+);
 assign oZ[0] = p_pp5[0];
 generate for (i=1; i<N; i=i+1 ) begin 
     assign oZ [i] = p_pp5[i]^ g11[i-1]; 
 end endgenerate                       
 assign oCarryOut = g11[N-1];         
-assign oReady    = wValidPP5;          
+assign oReady    = wValidPP7;          
+
 endmodule 

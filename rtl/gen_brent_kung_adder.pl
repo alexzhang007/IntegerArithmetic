@@ -56,7 +56,7 @@ printf OUT "wire         oCarryOut;\n";
 
 ##input D-FlipFlop 
 printf OUT "//Input DFF\n";
-printf OUT "wire [N-1:0] p,g,wX,wY;\n";
+printf OUT "wire [N-1:0] p0,g0,wX,wY;\n";
 
 printf OUT "FFD_POSEDGE_ASYNC_RESET #(.SIZE(N)) FFD_X ( \n";
 printf OUT "  .clk(clk),\n";
@@ -88,12 +88,26 @@ printf OUT ");\n";
 
 printf OUT "genvar i;         \n";
 printf OUT "generate for (i=0; i<N; i++) begin :pg_cla\n";
-printf OUT "    assign p[i] = wX[i]^wY[i];\n";
-printf OUT "    assign g[i] = wX[i]&wY[i];\n";
+printf OUT "    assign p0[i] = wX[i]^wY[i];\n";
+printf OUT "    assign g0[i] = wX[i]&wY[i];\n";
 printf OUT "end endgenerate \n";
 
-
-
+#Stage 0
+printf OUT "//Insert the D-FlipFlops to form pipeline \n";
+printf OUT "wire  [N-1:0] p, g;\n";
+printf OUT "FFD_POSEDGE_ASYNC_RESET #(.SIZE(N)) FFD_P0 (\n";
+printf OUT "  .clk(clk),\n";
+printf OUT "  .resetn(resetn),\n";
+printf OUT "  .D(p0),\n";
+printf OUT "  .Q(p)\n";
+printf OUT ");\n";
+printf OUT "\n";
+printf OUT "FFD_POSEDGE_ASYNC_RESET #(.SIZE(N)) FFD_G0 (\n";
+printf OUT "  .clk(clk),\n";
+printf OUT "  .resetn(resetn),\n";
+printf OUT "  .D(g0),\n";
+printf OUT "  .Q(g)\n";
+printf OUT ");\n";
 #Stage 1
 ##Start the Forward-prefix computation
 #Add the odd element with the even element 
@@ -487,13 +501,28 @@ for (my $k=0; $k<$nBits; $k=$k+1 ) {
 }
 
 ##Output the sum 
+#
 printf OUT "//Output the sum\n";
+printf OUT "wire wValidPP6;\n";
+printf OUT "FFD_POSEDGE_ASYNC_RESET #(.SIZE(1)) FFD_Delay6 (\n";
+printf OUT "  .clk(clk), \n";
+printf OUT "  .resetn(resetn), \n";
+printf OUT "  .D(wValidPP5), \n";
+printf OUT "  .Q(wValidPP6) \n";
+printf OUT ");\n";
+printf OUT "wire wValidPP7;\n";
+printf OUT "FFD_POSEDGE_ASYNC_RESET #(.SIZE(1)) FFD_Delay7 (\n";
+printf OUT "  .clk(clk), \n";
+printf OUT "  .resetn(resetn), \n";
+printf OUT "  .D(wValidPP6), \n";
+printf OUT "  .Q(wValidPP7) \n";
+printf OUT ");\n";
 printf OUT "assign oZ[0] = p_pp5[0];\n";
-printf OUT "generate for (i=1; i<N; i=i+1 ) begin \n";
+printf OUT "generate for (i=1; i<N; i=i+1 ) begin   \n";
 printf OUT "    assign oZ [i] = p_pp5[i]^ g11[i-1]; \n";
-printf OUT "end endgenerate                       \n";
-printf OUT "assign oCarryOut = g11[N-1];         \n";
-printf OUT "assign oReady    = wValidPP5;          \n";
+printf OUT "end endgenerate                         \n";
+printf OUT "assign oCarryOut = g11[N-1];            \n";
+printf OUT "assign oReady    = wValidPP7;           \n";
 
 } elsif ($nBits == 32) {
   print "Not Stage 6 for 32bit Adder in Forward-prefix computation.";
